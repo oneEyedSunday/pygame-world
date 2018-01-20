@@ -11,6 +11,7 @@ Pygame base template for opening a window, done with functions
 import pygame, sys
 from pygame.locals import *
 from player import Player
+from landscape import Landscape
 import globals
 # The use of the main function is described in Chapter 9.
 
@@ -28,7 +29,7 @@ TEXTCOLOR = WHITE
 
 
 def main():
-    global DISPLAYSURF, BASICFONT, FPSCLOCK, player, camera, allsprites
+    global DISPLAYSURF, BASICFONT, FPSCLOCK, player, camera, allLandscapeList, allSpriteList
     """ Main function for the game. """
     pygame.init()
 
@@ -49,11 +50,16 @@ def main():
     # leftest edge of screen is -150, so add to cameraRect
     cameraRect = pygame.Rect([150, 0, globals.WINWIDTH, globals.WINHEIGHT])
     player = Player(cameraRect) # create player object
+    player.rect.top = globals.HALFWINHEIGHT
+    player.rect.left = globals.HALFWINWIDTH
     startScreen()
     # Loop until the user clicks the close button.
     done = False
-    allsprites = getInitialObstacles() # push to Game class
-    landscape = getLandscape()
+    allLandscapeList = pygame.sprite.Group()
+    allSpriteList = pygame.sprite.Group() # incl players and enemies etc
+    getLandscape()
+    getInitialObstacles()  # push to Game class
+    allSpriteList.add(player)
 
 
 
@@ -68,17 +74,17 @@ def main():
                 if event.key == K_ESCAPE:
                     terminate()
                 if event.key == K_d:
-                    player.go_right(allsprites)
+                    player.go_right(allLandscapeList)
                     # print("%d - %d" % (player.rect.left, cameraRect.right))
 
                 if event.key == K_a:
-                    player.go_left(allsprites)
+                    player.go_left(allLandscapeList)
                     # print("%d - %d" % (player.rect.left, cameraRect.left))
 
                 if event.key == K_w:
-                    player.go_up(allsprites)
+                    player.go_up(allLandscapeList)
                 if event.key == K_s:
-                    player.go_down(allsprites)
+                    player.go_down(allLandscapeList)
                 if event.key == K_p:
                     player.change_avatar()
         # ALL EVENT PROCESSING SHOULD GO ABOVE THIS COMMENT
@@ -93,13 +99,11 @@ def main():
         # above this, or they will be erased with this command.
         DISPLAYSURF.fill(WHITE)
         DISPLAYSURF.fill(BGCOLOR)
-        for s in allsprites:
-            DISPLAYSURF.blit(s[0], s[1])
-
-        # for d in landscape:
-        #     DISPLAYSURF.blit(d[0], d[1])
+        # use draw instead for landscape
+        for b in allSpriteList:
+            b.draw(DISPLAYSURF)
         # draw player
-        DISPLAYSURF.blit(player.image, player.rect)
+        # DISPLAYSURF.blit(player.image, player.rect)
         # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
 
         # Go ahead and update the screen with what we've drawn.
@@ -162,19 +166,6 @@ def startScreen():
         pygame.display.update()
         FPSCLOCK.tick()
 
-def drawInitial(sprite):
-    """ Draw the initial placement of the game """
-    # this is never called
-    # paint background color
-    DISPLAYSURF.fill(BGCOLOR)
-    # draw obstacles
-    sprite = getInitialObstacles()
-    markers = getLandscape()
-
-    for s in sprite:
-        DISPLAYSURF.blit(s[0], s[1])
-    for d in markers:
-        DISPLAYSURF.blit(d[0], d[1])
 
 def getInitialObstacles():
     """ gets the position of the initial blocks """
@@ -184,48 +175,60 @@ def getInitialObstacles():
     from globals import TILEWIDTH, TILEHEIGHT, WINHEIGHT, TILEFLOORHEIGHT, LEVEL, HALFWINWIDTH
 
     no_of_blocks = 50
-    items = []
     for b in range(no_of_blocks // 2):
         # get image
-        image = globals.IMAGESDICT['rock']
+        # image = globals.IMAGESDICT['rock']
         for y in range(1,5):
             image = globals.IMAGESDICT[choice(['ugly tree', 'rock', 'tall tree'])]
             # make rect
-            spaceRect = pygame.Rect((b * TILEWIDTH, y * TILEFLOORHEIGHT, TILEWIDTH, TILEHEIGHT))
-            items.append([image, spaceRect])
+            spaceRect = pygame.Rect((b * TILEWIDTH, y * TILEFLOORHEIGHT, TILEWIDTH, TILEFLOORHEIGHT))
+            landscape = Landscape(image, spaceRect)
+            allLandscapeList.add(landscape)
+            allSpriteList.add(landscape)
 
     image = globals.IMAGESDICT['corner']
     negativeRect = pygame.Rect([-150, WINHEIGHT - TILEHEIGHT, TILEWIDTH, TILEHEIGHT])
-    items.append([image, negativeRect])
+    landscape = Landscape(image, negativeRect)
+    allLandscapeList.add(landscape)
+    allSpriteList.add(landscape)
 
     image = globals.IMAGESDICT['corner']
-    positiveRect = pygame.Rect([LEVEL[0] - TILEWIDTH, WINHEIGHT - TILEHEIGHT, TILEWIDTH, TILEHEIGHT])
-    items.append([image, positiveRect])
+    positiveRect = pygame.Rect([LEVEL[0] - TILEWIDTH, WINHEIGHT - TILEHEIGHT, TILEWIDTH, TILEFLOORHEIGHT])
+    landscape = Landscape(image, positiveRect)
+    allLandscapeList.add(landscape)
+    allSpriteList.add(landscape)
 
-    bottomRect = pygame.Rect([HALFWINWIDTH, LEVEL[1] - TILEHEIGHT, TILEWIDTH, TILEHEIGHT])
-    items.append([image, bottomRect])
+    bottomRect = pygame.Rect([HALFWINWIDTH, LEVEL[1] - TILEHEIGHT, TILEWIDTH, TILEFLOORHEIGHT])
+    landscape = Landscape(image, bottomRect)
+    allLandscapeList.add(landscape)
+    allSpriteList.add(landscape)
 
     for x in range(0, LEVEL[0], 50):
         for y in range(10):
             image = globals.IMAGESDICT[choice(['ugly tree', 'rock', 'tall tree'])]
-            spaceRect = pygame.Rect((x, LEVEL[1] - (y * TILEHEIGHT), TILEWIDTH, TILEHEIGHT))
+            spaceRect = pygame.Rect((x, LEVEL[1] - (y * TILEHEIGHT), TILEWIDTH, TILEFLOORHEIGHT))
+            landscape = Landscape(image, spaceRect)
             if choice([0,1,0]):
-                items.append([image, spaceRect])
+                allLandscapeList.add(landscape)
+                allSpriteList.add(landscape)
 
 
-    return items
+    return
 
 def getLandscape():
     # itesm representing end of the world at both edges
-    markers = []
     image = globals.IMAGESDICT['corner']
     negativeRect = pygame.Rect([-150, globals.WINHEIGHT - globals.TILEHEIGHT, globals.TILEWIDTH, globals.TILEHEIGHT])
-    markers.append([image, negativeRect])
+    landscape = Landscape(image, negativeRect)
+    allLandscapeList.add(landscape)
+    allSpriteList.add(landscape)
 
     image = globals.IMAGESDICT['corner']
     positiveRect = pygame.Rect([globals.LEVEL[0] - globals.TILEWIDTH, globals.WINHEIGHT - globals.TILEHEIGHT, globals.TILEWIDTH, globals.TILEHEIGHT])
-    markers.append([image, positiveRect])
-    return markers
+    landscape = Landscape(image, positiveRect)
+    allLandscapeList.add(landscape)
+    allSpriteList.add(landscape)
+    return
 
 def terminate():
     pygame.quit()
